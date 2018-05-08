@@ -1,0 +1,19 @@
+[pagerduty]
+org = "org" # https://{org subdomain}.pagerduty.com/
+token = "token" # api security token
+timezone = "Singapore"
+timezone_short = "SGT"
+fetch_interval_sec = 10 # interval between calls to pagerduty api
+since_days = 1 # number of days to fetch alerts from
+requester_id = "ABC1234" # pagerduty user id
+
+[[actions]]
+alert = '''service\.(?P<prefix>[a-z]{2,4})\.(?P<ip1>\d{1,3})_(?P<ip2>\d{1,3})_(?P<ip3>\d{1,3})_(?P<ip4>\d{1,3})\.error'''
+cmd = "/home/user/dosomething.sh $prefix $ip1.$ip2.$ip3.$ip4"
+pause_sec = 60
+resolve = true
+resolve_check = '''Status: OK\s+'''
+
+[[actions]]
+alert = '''service\.(?P<prefix>[a-z]{2,4})\.(?P<ip1>\d{1,3})_(?P<ip2>\d{1,3})_(?P<ip3>\d{1,3})_(?P<ip4>\d{1,3})\.warning'''
+cmd = "/home/user/dosomethingelse.sh $prefix $ip1.$ip2.$ip3.$ip4"
