@@ -1,6 +1,5 @@
 extern crate serde;
 extern crate serde_json;
-extern crate reqwest;
 extern crate chrono;
 extern crate futures;
 extern crate hyper;
@@ -93,6 +92,8 @@ fn get_commands_by_actions(cli: &mut Client, date: Date<Local>, cfg: &config::Co
                 None => continue,
             };
 
+            println!("action: {:?}", action);
+
             cmd_by_action.entry(action).or_insert(Vec::new()).push((incident_id.clone(), command));
         }
     }
@@ -121,7 +122,7 @@ fn resolve(action: &config::Action, pagerduty_cfg: &config::Pagerduty, incident_
 }
 
 fn print_usage(program: &str, opts: Options) {
-    println!("{}: {:?}", program, opts.usage("opsreport"));
+    println!("{}: {:?}", program, opts.usage("pdautomator"));
 }
 
 fn main() {
@@ -141,6 +142,8 @@ fn main() {
     let config_filename = matches.opt_str("c").unwrap_or(String::from("config.toml"));
 
     let cfg: config::Config = config::parse(&config_filename).expect(&format!("can't parse config '{}'", config_filename));
+
+    println!("config: {:?}", cfg);
 
     let mut cli = Client::new(&cfg.pagerduty.token, &cfg.pagerduty.org, &cfg.pagerduty.timezone, &cfg.pagerduty.timezone_short).unwrap();
 

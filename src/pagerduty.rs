@@ -1,7 +1,6 @@
 extern crate serde;
 extern crate serde_json;
 extern crate chrono;
-extern crate reqwest;
 extern crate hyper;
 extern crate futures;
 extern crate tokio_core;
