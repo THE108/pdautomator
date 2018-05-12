@@ -5,6 +5,7 @@ extern crate hyper;
 extern crate futures;
 extern crate tokio_core;
 extern crate hyper_tls;
+extern crate failure;
 
 use chrono::{Local, Date};
 use tokio_core::reactor::Core;
@@ -13,7 +14,6 @@ use futures::future::join_all;
 use hyper_tls::HttpsConnector;
 use hyper::{Method, Request};
 use hyper::header::Authorization;
-use std::io::Error as IoError;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct IncidentsResponse {
@@ -100,47 +100,8 @@ pub struct Client {
     timezone_short: String,
 }
 
-#[derive(Debug)]
-pub enum Error {
-    IoError(IoError),
-    TlsError(hyper_tls::Error),
-    UriError(hyper::error::UriError),
-    ParseJsonError(serde_json::error::Error),
-    HyperError(hyper::Error),
-}
-
-impl From<IoError> for Error {
-    fn from(error: IoError) -> Self {
-        Error::IoError(error)
-    }
-}
-
-impl From<hyper_tls::Error> for Error {
-    fn from(error: hyper_tls::Error) -> Self {
-        Error::TlsError(error)
-    }
-}
-
-impl From<hyper::error::UriError> for Error {
-    fn from(error: hyper::error::UriError) -> Self {
-        Error::UriError(error)
-    }
-}
-
-impl From<serde_json::error::Error> for Error {
-    fn from(error: serde_json::error::Error) -> Self {
-        Error::ParseJsonError(error)
-    }
-}
-
-impl From<hyper::Error> for Error {
-    fn from(error: hyper::Error) -> Self {
-        Error::HyperError(error)
-    }
-}
-
 impl Client {
-    pub fn new(token: &str, org: &str, timezone: &str, timezone_short: &str) -> Result<Client, Error> {
+    pub fn new(token: &str, org: &str, timezone: &str, timezone_short: &str) -> Result<Client, failure::Error> {
         let core = Core::new()?;
         let handle = core.handle();
         let tls_connector = HttpsConnector::new(4, &handle)?;
@@ -180,14 +141,14 @@ impl Client {
         Ok(url.parse()?)
     }
 
-    fn get(&self, uri: hyper::Uri) -> Box<Future<Item = hyper::Chunk, Error = hyper::Error>> {
+    fn get(&self, uri: hyper::Uri) -> impl Future<Item = hyper::Chunk, Error = hyper::Error> {
         let mut req = Request::new(Method::Get, uri);
         req.headers_mut().set(Authorization(format!("Token token={}", self.token)));
 
         Box::new(self.client.request(req).and_then(|res| res.body().concat2()))
     }
 
-    fn parse(&mut self, futs: Vec<Box<Future<Item = hyper::Chunk, Error = hyper::Error>>>) -> Result<Vec<IncidentsResponse>, Error> {
+    fn parse(&mut self, futs: Vec<impl Future<Item = hyper::Chunk, Error = hyper::Error>>) -> Result<Vec<IncidentsResponse>, failure::Error> {
         let bodies: Vec<hyper::Chunk> = self.core.run(join_all(futs))?;
 
         let mut responses = Vec::new();
@@ -202,7 +163,7 @@ impl Client {
         Ok(responses)
     }
 
-    fn parse_incidents(&mut self, futs: Vec<Box<Future<Item = hyper::Chunk, Error = hyper::Error>>>, incidents: &mut Vec<Incident>) -> Result<(u32, u32), Error> {
+    fn parse_incidents(&mut self, futs: Vec<impl Future<Item = hyper::Chunk, Error = hyper::Error>>, incidents: &mut Vec<Incident>) -> Result<(u32, u32), failure::Error> {
         let responses = self.parse(futs)?;
 
         let mut tupl: (u32, u32) = (0, 0);
@@ -225,7 +186,7 @@ impl Client {
         Ok(tupl)
     }
 
-    pub fn get_incidents(&mut self, since: Option<Date<Local>>, until: Option<Date<Local>>, status: Option<IncidentStatus>, fields: Vec<String>) -> Result<Vec<Incident>, Error> {
+    pub fn get_incidents(&mut self, since: Option<Date<Local>>, until: Option<Date<Local>>, status: Option<IncidentStatus>, fields: Vec<String>) -> Result<Vec<Incident>, failure::Error> {
         let mut offset: u32 = 0;
 
         let response_future = self.get(self.make_url(since, until, offset, &status, &fields)?);
@@ -257,7 +218,7 @@ impl Client {
         Ok(result)
     }
 
-    pub fn resolve(&mut self, incident_id: &str, requester_id: &str) -> Result<(), Error> {
+    pub fn resolve(&mut self, incident_id: &str, requester_id: &str) -> Result<(), failure::Error> {
         let uri = format!("https://{}.pagerduty.com/api/v1/incidents/{}/resolve?requester_id={}", self.org, incident_id, requester_id);
         let mut req = Request::new(Method::Put, uri.parse()?);
         req.headers_mut().set(Authorization(format!("Token token={}", self.token)));

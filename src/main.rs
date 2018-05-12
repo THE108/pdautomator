@@ -7,6 +7,7 @@ extern crate tokio_core;
 extern crate hyper_tls;
 extern crate getopts;
 extern crate regex;
+extern crate failure;
 
 #[macro_use]
 extern crate serde_derive;
@@ -24,24 +25,6 @@ use chrono::prelude::*;
 use pagerduty::{Client, IncidentStatus};
 use regex::{Regex, RegexSet};
 
-#[derive(Debug)]
-enum Error {
-    PagerdutyError(pagerduty::Error),
-    RegexError(regex::Error),
-}
-
-impl From<pagerduty::Error> for Error {
-    fn from(error: pagerduty::Error) -> Self {
-        Error::PagerdutyError(error)
-    }
-}
-
-impl From<regex::Error> for Error {
-    fn from(error: regex::Error) -> Self {
-        Error::RegexError(error)
-    }
-}
-
 fn get_regexes(cfg: &config::Config) -> Result<(RegexSet, Vec<Regex>), regex::Error> {
     let regex_strs: Vec<_> = cfg.actions.iter().map(|action| format!("^{}$", action.alert.trim())).collect();
     let set = RegexSet::new(&regex_strs)?;
@@ -53,7 +36,7 @@ fn get_regexes(cfg: &config::Config) -> Result<(RegexSet, Vec<Regex>), regex::Er
     Ok((set, regexes))
 }
 
-fn get_commands_by_actions(cli: &mut Client, date: Date<Local>, cfg: &config::Config) -> Result<HashMap<config::Action, Vec<(String, String)>>, Error> {
+fn get_commands_by_actions(cli: &mut Client, date: Date<Local>, cfg: &config::Config) -> Result<HashMap<config::Action, Vec<(String, String)>>, failure::Error> {
     let incidents = cli.get_incidents(Some(date),
                                  None, Some(IncidentStatus::Triggered),
                                  vec!["id".to_string(), "trigger_summary_data".to_string()])?;
@@ -101,7 +84,7 @@ fn get_commands_by_actions(cli: &mut Client, date: Date<Local>, cfg: &config::Co
     Ok(cmd_by_action)
 }
 
-fn resolve(action: &config::Action, pagerduty_cfg: &config::Pagerduty, incident_id: &str, stdout: &str) -> Result<(), Error> {
+fn resolve(action: &config::Action, pagerduty_cfg: &config::Pagerduty, incident_id: &str, stdout: &str) -> Result<(), failure::Error> {
     if !action.resolve.unwrap_or(false) {
         return Ok(());
     }
@@ -125,7 +108,7 @@ fn print_usage(program: &str, opts: Options) {
     println!("{}: {:?}", program, opts.usage("pdautomator"));
 }
 
-fn main() {
+fn main() -> Result<(), failure::Error> {
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
 
@@ -136,20 +119,20 @@ fn main() {
     let matches = opts.parse(&args[1..]).expect("couldn't parse command line");
     if matches.opt_present("h") {
         print_usage(&program, opts);
-        return;
+        return Ok(());
     }
 
     let config_filename = matches.opt_str("c").unwrap_or(String::from("config.toml"));
 
-    let cfg: config::Config = config::parse(&config_filename).expect(&format!("can't parse config '{}'", config_filename));
+    let cfg: config::Config = config::parse(&config_filename)?;
 
     println!("config: {:?}", cfg);
 
-    let mut cli = Client::new(&cfg.pagerduty.token, &cfg.pagerduty.org, &cfg.pagerduty.timezone, &cfg.pagerduty.timezone_short).unwrap();
+    let mut cli = Client::new(&cfg.pagerduty.token, &cfg.pagerduty.org, &cfg.pagerduty.timezone, &cfg.pagerduty.timezone_short)?;
 
     let since = Local::now() - chrono::Duration::days(cfg.pagerduty.since_days.into());
 
-    let commands_by_actions = get_commands_by_actions(&mut cli, since.date(), &cfg).unwrap();
+    let commands_by_actions = get_commands_by_actions(&mut cli, since.date(), &cfg)?;
 
     println!("cmds: {:?}", commands_by_actions);
 
@@ -184,4 +167,6 @@ fn main() {
     for worker in workers {
         let _ = worker.join();
     }
+
+    Ok(())
 }

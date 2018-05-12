@@ -1,7 +1,8 @@
 extern crate toml;
+extern crate failure;
 
 use std::fs::File;
-use std::io::{self, Read};
+use std::io::Read;
 
 #[derive(Deserialize, Debug)]
 pub struct Config {
@@ -29,25 +30,7 @@ pub struct Action {
     pub resolve_check: Option<String>,
 }
 
-#[derive(Debug)]
-pub enum ConfigError {
-    IoError(io::Error),
-    ParseError(toml::de::Error),
-}
-
-impl From<io::Error> for ConfigError {
-    fn from(error: io::Error) -> Self {
-        ConfigError::IoError(error)
-    }
-}
-
-impl From<toml::de::Error> for ConfigError {
-    fn from(error: toml::de::Error) -> Self {
-        ConfigError::ParseError(error)
-    }
-}
-
-pub fn parse(filename: &str) -> Result<Config, ConfigError> {
+pub fn parse(filename: &str) -> Result<Config, failure::Error> {
     let mut fd = File::open(filename)?;
 
     let mut contents = String::new();
