@@ -16,7 +16,6 @@ pub struct Pagerduty {
     pub token: String,
     pub timezone: String,
     pub timezone_short: String,
-    pub fetch_interval_sec: u32,
     pub since_days: u32,
     pub requester_id: String,
 }

@@ -3,7 +3,6 @@ org = "org" # https://{org subdomain}.pagerduty.com/
 token = "token" # api security token
 timezone = "Singapore"
 timezone_short = "SGT"
-fetch_interval_sec = 10 # interval between calls to pagerduty api
 since_days = 1 # number of days to fetch alerts from
 requester_id = "ABC1234" # pagerduty user id
 
