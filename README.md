@@ -30,7 +30,7 @@ pause_sec = 60
 
 So, if two alerts which match with `alert` regexp were fired simultaniously (actually fetched during the same `pdautomator` run) the second alert will wait for 60 seconds before it will trigger the command execution.
 
-Alerts could be resolved by `pdautomator` after user a defined command has been executed.
+Alerts could be resolved by `pdautomator` after a user defined command has been executed.
 
 ```
 [[actions]]
