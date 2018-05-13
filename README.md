@@ -40,7 +40,7 @@ resolve = true
 resolve_check = '''Status: OK\s+'''
 ```
 
-Here every opened alert which matches regexp provided in `alert` field will be resolved if the command's output (`stdout`) matches with `resolve_check` regexp. Note, alerts will be resolved using `requester_id` (user id) from `pagerduty` section.
+Here every opened alert which matches regexp provided in `alert` field will be resolved if the command's output (`stdout`) matches with `resolve_check` regexp. Note that alerts will be resolved using `requester_id` (user id) from `pagerduty` section.
 
 ### Pagerduty configuration
 
