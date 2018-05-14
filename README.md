@@ -59,6 +59,8 @@ requester_id = "ABC1234" # pagerduty user id
 
 You need at least [rust](https://www.rust-lang.org/en-US/install.html) 1.26 to compile `pdautomator`.
 
+When rust has been installed just run the following command in the project directory:
+
 ```bash
 $ cargo build --release
 ```
