@@ -4,6 +4,24 @@ Pagerduty simple task automation tool.
 ## What is it for?
 `pdautomator` connects pagerduty alerts with user defined actions.
 
+## Installation
+
+You need at least [rust](https://www.rust-lang.org/en-US/install.html) 1.26 to compile `pdautomator`.
+
+When rust has been installed just run the following command in the project directory:
+
+```bash
+$ cargo build --release
+```
+
+## Usage
+
+Just pass a path to the config file:
+
+```bash
+$ ./pdautomator -c config.toml
+```
+
 ## Configuration
 
 ### User defined actions configuration
@@ -53,14 +71,6 @@ timezone = "Singapore"
 timezone_short = "SGT"
 since_days = 1 # number of days to fetch alerts from
 requester_id = "ABC1234" # pagerduty user id
-```
-
-## Installation
-
-You need at least [rust](https://www.rust-lang.org/en-US/install.html) 1.26 to compile `pdautomator`.
-
-```bash
-$ cargo build --release
 ```
 
 ## Lisence
