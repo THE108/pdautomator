@@ -10,7 +10,7 @@ extern crate failure;
 use chrono::{Local, Date};
 use tokio_core::reactor::Core;
 use futures::{Future, Stream};
-use futures::future::join_all;
+use futures::stream::futures_unordered;
 use hyper_tls::HttpsConnector;
 use hyper::{Method, Request};
 use hyper::header::Authorization;
@@ -149,7 +149,7 @@ impl Client {
     }
 
     fn parse(&mut self, futs: Vec<impl Future<Item = hyper::Chunk, Error = hyper::Error>>) -> Result<Vec<IncidentsResponse>, failure::Error> {
-        let bodies: Vec<hyper::Chunk> = self.core.run(join_all(futs))?;
+        let bodies: Vec<hyper::Chunk> = self.core.run(futures_unordered(futs).collect())?;
 
         let mut responses = Vec::new();
         for body in bodies {
