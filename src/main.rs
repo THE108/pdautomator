@@ -36,6 +36,17 @@ fn get_regexes(cfg: &config::Config) -> Result<(RegexSet, Vec<Regex>), regex::Er
     Ok((set, regexes))
 }
 
+macro_rules! skip_fail {
+    ($res:expr) => {
+        match $res {
+            Some(val) => val,
+            None => {
+                continue;
+            }
+        }
+    };
+}
+
 fn get_commands_by_actions(cli: &mut Client, date: Date<Local>, cfg: &config::Config) -> Result<HashMap<config::Action, Vec<(String, String)>>, failure::Error> {
     let incidents = cli.get_incidents(Some(date),
                                  None, Some(IncidentStatus::Triggered),
@@ -45,22 +56,10 @@ fn get_commands_by_actions(cli: &mut Client, date: Date<Local>, cfg: &config::Co
 
     let mut cmd_by_action: HashMap<config::Action, Vec<(String, String)>> = HashMap::new();
     for incident in incidents {
-        let desc = match incident.trigger_summary_data {
-            Some(data) => data.description,
-            None => continue,
-        };
-
-        let desc = match desc {
-            Some(desc) => desc,
-            None => continue,
-        };
-
+        let data = skip_fail!(incident.trigger_summary_data);
+        let desc = skip_fail!(data.description);
         let desc = desc.trim();
-
-        let incident_id = match incident.id {
-            Some(id) => id,
-            None => continue,
-        };
+        let incident_id = skip_fail!(incident.id);
 
         println!("desc: {}", desc);
 
@@ -108,6 +107,14 @@ fn print_usage(program: &str, opts: Options) {
     println!("{}: {:?}", program, opts.usage("pdautomator"));
 }
 
+fn sleep(pause: Option<u64>) {
+    if let Some(pause_sec) = pause {
+        if pause_sec > 0 {
+            thread::sleep(Duration::from_secs(pause_sec));
+        }
+    }
+}
+
 fn main() -> Result<(), failure::Error> {
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
@@ -140,7 +147,14 @@ fn main() -> Result<(), failure::Error> {
     for (action, commands) in commands_by_actions {
         let pagerduty_cfg = cfg.pagerduty.clone();
         workers.push(thread::spawn(move || {
+            let mut is_first_run = true;
             for (incident_id, command) in commands {
+                if !is_first_run {
+                    sleep(action.pause_sec);
+                } else {
+                    is_first_run = false;
+                }
+
                 let (stdout, stderr) = match cmd::run(&command) {
                     Ok(result) => result,
                     Err(err) => {
@@ -154,12 +168,6 @@ fn main() -> Result<(), failure::Error> {
 
                 let _ = resolve(&action, &pagerduty_cfg, &incident_id, &stdout)
                             .map_err(|err| println!("error: {:?}", err));
-
-                if let Some(pause_sec) = action.pause_sec {
-                    if pause_sec > 0 {
-                        thread::sleep(Duration::from_secs(pause_sec));
-                    }
-                }
             }
         }));
     }
